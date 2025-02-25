@@ -5,7 +5,7 @@
   "publisher": "WindyAwaki",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/RayAdas/chat-in-markdown.git"
   },
   "engines": {
     "vscode": "^1.76.0"
