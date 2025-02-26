@@ -1,5 +1,4 @@
 const markdown = require('markdown-it')();
-const fs = require('fs');
 
 function getCurrentH1Chapter(content, cursorLine) {
     const lines = content.split('\n');

@@ -6,13 +6,7 @@ const OpenAI = require('openai');
 
 async function activate(context) {
   
-  // console.log('恭喜，您的扩展“vscode-plugin-demo”已被激活！');
-  // 创建状态栏按钮
-  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBarItem.text = "$(run) Chat";
-  statusBarItem.tooltip = "Click to chat with AI";
-  statusBarItem.command = 'chat-in-markdown.sentChat';
-  statusBarItem.show();
+  // console.log('您的扩展已被激活！');
 
   // 注册命令
   let disposable = vscode.commands.registerCommand('chat-in-markdown.sentChat', async () => {
@@ -25,55 +19,62 @@ async function activate(context) {
     const content = activeEditor.document.getText();
     const position = activeEditor.selection.active;  // 获取光标位置
     const line = position.line;  // 获取光标所在行
-    const [prevH1Line, nextH1Line] = sm.getCurrentH1Chapter(content, line)
-    const h1p_without_h1 = content.split('\n').slice(prevH1Line+1, nextH1Line).join('\n');
-    const h2ps = sm.splitH2Chapter(h1p_without_h1);
-    
-    const messages = [];
-    for (const h2p of h2ps) {
-      const [head, text] = sm.splitH2Head(h2p);
-      messages.push({ "role": head, "content": text });
-    }
-
     const configuration = vscode.workspace.getConfiguration('chat-in-markdown');
     const apiKey = configuration.get('apiKey');
     const baseURL = configuration.get('baseURL');
     const model = configuration.get('model');
 
-    const openai = new OpenAI({
-      apiKey: apiKey,
-      baseURL: baseURL,
-    });
-
-    // Streaming:
-    const stream = await openai.chat.completions.create({
-      messages: messages,
-      model: model,
-      stream: true,
-    });
-
-    let insertPosition = new vscode.Position(nextH1Line, activeEditor.document.lineAt(nextH1Line-1).text.length);
-
-    const aswTitle = '\n' + '## assistant' + '\n';
-    insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
-
-    let fullResponse = ''; // 新建一个变量用于储存大模型流式输出
-    for await (const part of stream) {
-      const content = part.choices[0]?.delta?.content || '';
-      if (content) {
-      fullResponse += content; // 将内容追加到 fullResponse 变量中
-      insertPosition = await insertTextAndReturnNewPosition(content, insertPosition, activeEditor);
-      }
-    }
-    
-    const responseHeads = sm.getAllHead(fullResponse);
-    for (const head of responseHeads) {
-      let headsPos = new vscode.Position(head + nextH1Line + 1, 0)
-      insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
-    }
+    await main(content, line, apiKey, baseURL, model, activeEditor);
   });
 
-  context.subscriptions.push(disposable, statusBarItem);
+  context.subscriptions.push(disposable);
+}
+
+async function main(content, line, apiKey, baseURL, model, activeEditor) {
+  
+  const openai = new OpenAI({
+    apiKey: apiKey,
+    baseURL: baseURL,
+  });
+
+  const [prevH1Line, nextH1Line] = sm.getCurrentH1Chapter(content, line);
+  const h1p_without_h1 = content.split('\n').slice(prevH1Line+1, nextH1Line).join('\n');
+  const h2ps = sm.splitH2Chapter(h1p_without_h1);
+  
+  // 拼接消息
+  const messages = [];
+  for (const h2p of h2ps) {
+    const [head, text] = sm.splitH2Head(h2p);
+    messages.push({ "role": head, "content": text });
+  }
+
+  // Streaming:
+  const stream = await openai.chat.completions.create({
+    messages: messages,
+    model: model,
+    stream: true,
+  });
+
+  let insertPosition = new vscode.Position(nextH1Line, activeEditor.document.lineAt(nextH1Line-1).text.length);
+
+  const aswTitle = '\n' + '## assistant' + '\n';
+  insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
+
+  let fullResponse = ''; // 新建一个变量用于储存大模型流式输出
+  for await (const part of stream) {
+    const content = part.choices[0]?.delta?.content || '';
+    if (content) {
+    fullResponse += content; // 将内容追加到 fullResponse 变量中
+    insertPosition = await insertTextAndReturnNewPosition(content, insertPosition, activeEditor);
+    }
+  }
+  
+  // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调两级
+  const responseHeads = sm.getAllHead(fullResponse);
+  for (const head of responseHeads) {
+    let headsPos = new vscode.Position(head + nextH1Line + 1, 0)
+    insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
+  }
 }
 
 /**
@@ -112,6 +113,7 @@ async function insertTextAndReturnNewPosition(text, position, editor) {
   return newPosition;
 }
 
-function deactivate() {}
+function deactivate() {
+}
 
 module.exports = { activate, deactivate };

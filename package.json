@@ -1,8 +1,12 @@
 {
   "name": "chat-in-markdown",
   "displayName": "Chat in Markdown",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "keywords": [],
+  "description": "",
   "publisher": "WindyAwaki",
+  "author": "WindyAwaki",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/RayAdas/chat-in-markdown.git"
@@ -10,9 +14,12 @@
   "engines": {
     "vscode": "^1.76.0"
   },
+  "dependencies": {
+    "markdown-it": "^14.1.0",
+    "openai": "^4.85.4"
+  },
   "activationEvents": [
-    "onLanguage:markdown",
-    "onCommand:extension.sayHello"
+    "onLanguage:markdown"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -22,12 +29,6 @@
         "title": "Sent Chat"
       }
     ],
-    "keybindings": [
-      {
-        "command": "chat-in-markdown.sentChat",
-        "key": "Ctrl+Alt+B"
-      }
-    ],
     "configuration": {
       "type": "object",
       "title": "Chat in Markdown Configuration",
@@ -35,26 +36,37 @@
         "chat-in-markdown.apiKey": {
           "type": "string",
           "default": "",
-          "description": "API Key for OpenAI"
+          "description": "API Key for  OpenAI API"
         },
         "chat-in-markdown.baseURL": {
           "type": "string",
           "default": "https://ark.cn-beijing.volces.com/api/v3",
-          "description": "Base URL for OpenAI"
+          "description": "Base URL for OpenAI API"
         },
         "chat-in-markdown.model": {
           "type": "string",
           "default": "ep-20250224162638-lk6m9",
-          "description": "Model for OpenAI"
+          "description": "Model for OpenAI API"
         }
       }
+    },
+    "keybindings": [
+      {
+        "command": "chat-in-markdown.sentChat",
+        "key": "Ctrl+Alt+C"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "chat-in-markdown.sentChat",
+          "when": "editorLangId == markdown",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  }
 }
