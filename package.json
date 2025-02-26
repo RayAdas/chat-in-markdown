@@ -1,10 +1,11 @@
 {
   "name": "chat-in-markdown",
   "displayName": "Chat in Markdown",
-  "version": "0.0.2",
+  "icon": "images/icon.png",
+  "version": "0.0.3",
   "keywords": [],
   "description": "",
-  "publisher": "WindyAwaki",
+  "publisher": "WindyAwaki",  
   "author": "WindyAwaki",
   "license": "GPL-3.0-only",
   "repository": {
@@ -27,7 +28,11 @@
       {
         "command": "chat-in-markdown.sentChat",
         "title": "Sent Chat",
-        "when": "editorLangId == markdown"
+        "when": "editorLangId == markdown",
+        "icon": {
+          "light": "./images/for-light.svg",
+          "dark": "./images/for-dark.svg"
+        }
       }
     ],
     "configuration": {
