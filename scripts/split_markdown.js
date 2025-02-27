@@ -1,7 +1,6 @@
 const markdown = require('markdown-it')();
 
-function getCurrentH1Chapter(content, cursorLine) {
-    const lines = content.split('\n');
+function getCurrentH1Chapter(lines, cursorLine) {
     const decodedLines = lines.map(line => markdown.render(line));
     const h1Pattern = /<h1>.*?<\/h1>/;
     const h1Lines = decodedLines.map((line, i) => h1Pattern.test(line) ? i : -1).filter(i => i !== -1);
@@ -29,18 +28,17 @@ function getCurrentH1Chapter(content, cursorLine) {
     return [prevH1Line, nextH1Line];
 }
 
-function splitH2Chapter(content) {
-    const lines = content.split('\n');
+function splitH2Chapter(lines) {
     const decodedLines = lines.map(line => markdown.render(line));
     const h2Pattern = /<h2>.*?<\/h2>/;
     const h2Lines = decodedLines.map((line, i) => h2Pattern.test(line) ? i : -1).filter(i => i !== -1);
 
     if (h2Lines.length === 0) {
-        return [content];
+        throw new Error("No previous H2 header found");
     }
 
     const chapters = [];
-    let startLine = 0;
+    let startLine = h2Lines[0];
 
     h2Lines.shift();
 

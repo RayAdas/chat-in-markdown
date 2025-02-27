@@ -30,16 +30,17 @@ async function activate(context) {
   context.subscriptions.push(disposable);
 }
 
-async function main(content, line, apiKey, baseURL, model, activeEditor) {
+async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
   
   const openai = new OpenAI({
     apiKey: apiKey,
     baseURL: baseURL,
   });
 
-  const [prevH1Line, nextH1Line] = sm.getCurrentH1Chapter(content, line);
-  const h1p_without_h1 = content.split('\n').slice(prevH1Line+1, nextH1Line).join('\n');
-  const h2ps = sm.splitH2Chapter(h1p_without_h1);
+  lines = content.split('\n')
+  const [prevH1Line, nextH1Line] = sm.getCurrentH1Chapter(lines, cursorLine);
+  const this_h1p_lines = lines.slice(prevH1Line, nextH1Line);
+  const h2ps = sm.splitH2Chapter(this_h1p_lines);
   
   // 拼接消息
   const messages = [];
