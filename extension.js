@@ -16,13 +16,28 @@ async function activate(context) {
       return;
     }
 
-    const content = activeEditor.document.getText();
+    const content = activeEditor.document.getText(); // 获取整个文档内容
     const position = activeEditor.selection.active;  // 获取光标位置
     const line = position.line;  // 获取光标所在行
     const configuration = vscode.workspace.getConfiguration('chat-in-markdown');
     const apiKey = configuration.get('apiKey');
     const baseURL = configuration.get('baseURL');
     const model = configuration.get('model');
+
+    if (!apiKey) {
+      vscode.window.showErrorMessage('LLM API Key not set!');
+      return;
+    }
+
+    if (!baseURL) {
+      vscode.window.showErrorMessage('LLM Base URL not set!');
+      return;
+    }
+
+    if (!model) {
+      vscode.window.showErrorMessage('LLM Model not set!');
+      return;
+    }
 
     await main(content, line, apiKey, baseURL, model, activeEditor);
   });
