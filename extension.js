@@ -20,6 +20,7 @@ async function activate(context) {
     const configuration = vscode.workspace.getConfiguration('chat-in-markdown');
     const baseURL = configuration.get('baseURL');
     const model = configuration.get('model');
+    const singleFileMode = configuration.get('singleFileMode', false);
 
   // 从 VS Code SecretStorage 中获取 API Key，如不存在则尝试从旧配置迁移或提示用户输入
   let apiKey = await context.secrets.get('chat-in-markdown.apiKey');
@@ -54,7 +55,7 @@ async function activate(context) {
       return;
     }
 
-    await main(content, line, apiKey, baseURL, model, activeEditor);
+    await main(content, line, apiKey, baseURL, model, activeEditor, singleFileMode);
   });
 
   context.subscriptions.push(disposable);
@@ -68,7 +69,7 @@ async function activate(context) {
   context.subscriptions.push(resetDisposable);
 }
 
-async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
+async function main(content, cursorLine, apiKey, baseURL, model, activeEditor, singleFileMode) {
   const openai = new OpenAI({
     apiKey: apiKey,
     baseURL: baseURL,
@@ -77,44 +78,57 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
   // 解析 markdown，获取所有标题
   const tokens = sm.parseMarkdown(content);
   const headings = sm.getH1H2Headings(tokens);
-  const [contextStartLine, nextH1Line] = sm.getContextLineRange(cursorLine, headings);
-
-  // 检查是否找到前置H1
-  if (contextStartLine === -1) {
-    vscode.window.showErrorMessage('No preceding H1 heading found!');
-    return;
-  }
   const content_lines = content.split('\n');
+  
 
-  // 若未找到下一个H1，则设为全文结尾
-  const contextEndLine = nextH1Line === -1 ? content_lines.length : nextH1Line; 
-  
-  // 获取上下文范围内的所有H2
-  const h2s = sm.getAllH2inRange(headings, contextStartLine, contextEndLine);
-  
-  // 构建拆分点数组
+  // 确定上下文范围和角色标题
+  let contextStartLine;
+  let contextEndLine;
+  let roleHeadings = [];
+  if (singleFileMode) {
+    // single file mode: 文件作为上下文，使用 H1 作为角色
+    roleHeadings = headings.filter(h => h.level === 1);
+    contextStartLine = 0;
+    contextEndLine = content_lines.length;
+  } else {
+    // 普通模式：H1 划分上下文，H2 划分角色
+    const [start, nextH1Line] = sm.getContextLineRange(cursorLine, headings);
+
+    // 检查是否找到前置H1
+    if (start === -1) {
+      vscode.window.showErrorMessage('No preceding H1 heading found!');
+      return;
+    }
+
+    contextStartLine = start;
+
+    // 若未找到下一个H1，则设为全文结尾
+    contextEndLine = nextH1Line === -1 ? content_lines.length : nextH1Line;
+
+    // 获取上下文范围内的所有H2
+    roleHeadings = sm.getAllH2inRange(headings, contextStartLine, contextEndLine);
+  }
+
+  // 构建拆分点数组（按角色标题行号拆分）
   const splitLines = [];
-  for (const h2 of h2s) {
-    splitLines.push(h2.line);
+  for (const rh of roleHeadings) {
+    splitLines.push(rh.line);
   }
   splitLines.push(contextEndLine);
 
   // 按照拆分点拆分文本
-  const h2ps = sm.splitTextByLines(content_lines, splitLines);
-  
-  let message_length = 0;
-  if (h2ps.length === h2s.length) {
-    message_length = h2s.length;
-  } else {
-    vscode.window.showErrorMessage('Error in splitting text by H2 headings!');
+  const roleParagraphs = sm.splitTextByLines(content_lines, splitLines);
+
+  if (roleParagraphs.length !== roleHeadings.length) {
+    vscode.window.showErrorMessage('Error in splitting text by role headings!');
     return;
   }
 
   // 拼接消息
   const messages = [];
-  for (let i = 0; i < message_length; i++) {
-    const head = h2s[i].text;
-    const text = h2ps[i];
+  for (let i = 0; i < roleHeadings.length; i++) {
+    const head = roleHeadings[i].text;
+    const text = roleParagraphs[i];
     messages.push({ "role": head, "content": text });
   }
 
@@ -130,8 +144,9 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
       contextEndLine - 1,
       activeEditor.document.lineAt(contextEndLine - 1).text.length
     );
-
-    const aswTitle = '\n' + '## assistant' + '\n';
+    
+    const prefix = singleFileMode ? '#' : '##';
+    const aswTitle = '\n' +  prefix + ' assistant' + '\n';
     insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
 
     let fullResponse = ''; // 新建一个变量用于储存大模型流式输出
@@ -148,7 +163,7 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
     const responseHeadings = sm.getH1H2Headings(responseTokens);
     for (const head of responseHeadings) {
       const headsPos = new vscode.Position(head.line + contextEndLine + 1, 0);
-      insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
+      insertPosition = await insertTextAndReturnNewPosition(prefix, headsPos, activeEditor);
     }
   } catch (error) {
     console.error('Error during LLM streaming:', error);

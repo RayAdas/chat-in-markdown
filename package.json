@@ -52,6 +52,11 @@
           "type": "string",
           "default": "deepseek-chat",
           "description": "Model for OpenAI API"
+        },
+        "chat-in-markdown.singleFileMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, use the whole file as one conversation and use H1 headings as roles. In normal mode, H1 separates conversations and H2 separates roles."
         }
       }
     },
