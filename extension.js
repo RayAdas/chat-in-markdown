@@ -18,14 +18,31 @@ async function activate(context) {
     const position = activeEditor.selection.active;  // 获取光标位置
     const line = position.line;  // 获取光标所在行，0-based
     const configuration = vscode.workspace.getConfiguration('chat-in-markdown');
-    const apiKey = configuration.get('apiKey');
     const baseURL = configuration.get('baseURL');
     const model = configuration.get('model');
 
+  // 从 VS Code SecretStorage 中获取 API Key，如不存在则尝试从旧配置迁移或提示用户输入
+  let apiKey = await context.secrets.get('chat-in-markdown.apiKey');
+  if (!apiKey) {
+    const legacyApiKey = configuration.get('apiKey');
+    if (legacyApiKey) {
+      apiKey = legacyApiKey;
+      await context.secrets.store('chat-in-markdown.apiKey', apiKey);
+    }
+  }
+
+  if (!apiKey) {
+    apiKey = await vscode.window.showInputBox({
+      prompt: 'Please enter your LLM API Key',
+      ignoreFocusOut: true,
+      password: true,
+    });
     if (!apiKey) {
       vscode.window.showErrorMessage('LLM API Key not set!');
       return;
     }
+    await context.secrets.store('chat-in-markdown.apiKey', apiKey);
+  }
 
     if (!baseURL) {
       vscode.window.showErrorMessage('LLM Base URL not set!');

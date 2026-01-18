@@ -39,11 +39,6 @@
       "type": "object",
       "title": "Chat in Markdown Configuration",
       "properties": {
-        "chat-in-markdown.apiKey": {
-          "type": "string",
-          "default": "",
-          "description": "API Key for  OpenAI API"
-        },
         "chat-in-markdown.baseURL": {
           "type": "string",
           "default": "https://ark.cn-beijing.volces.com/api/v3",
