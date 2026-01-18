@@ -6,7 +6,7 @@ const OpenAI = require('openai');
 
 async function activate(context) {
   
-  // console.log('您的扩展已被激活！');
+  // console.log('扩展chat-in-markdown已被激活！');
 
   // 注册命令
   let disposable = vscode.commands.registerCommand('chat-in-markdown.sentChat', async () => {
@@ -18,7 +18,7 @@ async function activate(context) {
 
     const content = activeEditor.document.getText(); // 获取整个文档内容
     const position = activeEditor.selection.active;  // 获取光标位置
-    const line = position.line;  // 获取光标所在行
+    const line = position.line;  // 获取光标所在行，0-based
     const configuration = vscode.workspace.getConfiguration('chat-in-markdown');
     const apiKey = configuration.get('apiKey');
     const baseURL = configuration.get('baseURL');
@@ -52,15 +52,47 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
     baseURL: baseURL,
   });
 
-  lines = content.split('\n')
-  const [prevH1Line, nextH1Line] = sm.getCurrentH1Chapter(lines, cursorLine);
-  const this_h1p_lines = lines.slice(prevH1Line, nextH1Line);
-  const h2ps = sm.splitH2Chapter(this_h1p_lines);
+  // 解析 markdown，获取所有标题
+  const tokens = sm.parseMarkdown(content);
+  const headings = sm.getH1H2Headings(tokens);
+  const [contextStartLine, nextH1Line] = sm.getContextLineRange(cursorLine, headings);
+
+  // 检查是否找到前置H1
+  if (contextStartLine === -1) {
+    vscode.window.showErrorMessage('No preceding H1 heading found!');
+    return;
+  }
+  const content_lines = content.split('\n');
+
+  // 若未找到下一个H1，则设为全文结尾
+  const contextEndLine = nextH1Line === -1 ? content_lines.length : nextH1Line; 
   
+  // 获取上下文范围内的所有H2
+  const h2s = sm.getAllH2inRange(headings, contextStartLine, contextEndLine);
+  
+  // 构建拆分点数组
+  const splitLines = [];
+  for (const h2 of h2s) {
+    splitLines.push(h2.line);
+  }
+  splitLines.push(contextEndLine);
+
+  // 按照拆分点拆分文本
+  const h2ps = sm.splitTextByLines(content_lines, splitLines);
+  
+  let message_length = 0;
+  if (h2ps.length === h2s.length) {
+    message_length = h2s.length;
+  } else {
+    vscode.window.showErrorMessage('Error in splitting text by H2 headings!');
+    return;
+  }
+
   // 拼接消息
   const messages = [];
-  for (const h2p of h2ps) {
-    const [head, text] = sm.splitH2Head(h2p);
+  for (let i = 0; i < message_length; i++) {
+    head = h2s[i].text;
+    text = h2ps[i];
     messages.push({ "role": head, "content": text });
   }
 
@@ -71,7 +103,7 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
     stream: true,
   });
 
-  let insertPosition = new vscode.Position(nextH1Line, activeEditor.document.lineAt(nextH1Line-1).text.length);
+  let insertPosition = new vscode.Position(contextEndLine-1, activeEditor.document.lineAt(contextEndLine-1).text.length);
 
   const aswTitle = '\n' + '## assistant' + '\n';
   insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
@@ -86,9 +118,10 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
   }
   
   // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调两级
-  const responseHeads = sm.getAllHead(fullResponse);
-  for (const head of responseHeads) {
-    let headsPos = new vscode.Position(head + nextH1Line + 1, 0)
+  const responseTokens = sm.parseMarkdown(fullResponse);
+  const responseHeadings = sm.getH1H2Headings(responseTokens);
+  for (const head of responseHeadings) {
+    let headsPos = new vscode.Position(head.line + contextEndLine + 1, 0)
     insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
   }
 }
@@ -110,9 +143,9 @@ async function insertTextAndReturnNewPosition(text, position, editor) {
   });
 
   if (success) {
-      console.log('Text inserted successfully!');
+      // console.log('Text inserted successfully!');
   } else {
-      console.log('Failed to insert text.');
+      // console.log('Failed to insert text.');
       return position;  // 如果插入失败，返回原位置
   }
 
