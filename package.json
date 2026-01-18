@@ -26,8 +26,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "chat-in-markdown.sentChat",
-        "title": "Sent Chat",
+        "command": "chat-in-markdown.sendChat",
+        "title": "Send Chat",
         "when": "editorLangId == markdown",
         "icon": {
           "light": "./images/for-light.svg",
@@ -58,7 +58,7 @@
     },
     "keybindings": [
       {
-        "command": "chat-in-markdown.sentChat",
+        "command": "chat-in-markdown.sendChat",
         "when": "editorLangId == markdown",
         "key": "Ctrl+Alt+C"
       }
@@ -66,7 +66,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "chat-in-markdown.sentChat",
+          "command": "chat-in-markdown.sendChat",
           "when": "editorLangId == markdown",
           "group": "navigation"
         }

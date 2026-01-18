@@ -7,7 +7,7 @@ async function activate(context) {
   // console.log('扩展chat-in-markdown已被激活！');
 
   // 注册命令
-  let disposable = vscode.commands.registerCommand('chat-in-markdown.sentChat', async () => {
+  let disposable = vscode.commands.registerCommand('chat-in-markdown.sendChat', async () => {
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor || activeEditor.document.languageId !== 'markdown') {
       vscode.window.showErrorMessage('Active file is not a Markdown document!');
