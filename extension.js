@@ -7,7 +7,7 @@ async function activate(context) {
   // console.log('扩展chat-in-markdown已被激活！');
 
   // 注册命令
-  let disposable = vscode.commands.registerCommand('chat-in-markdown.sendChat', async () => {
+	let disposable = vscode.commands.registerCommand('chat-in-markdown.sendChat', async () => {
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor || activeEditor.document.languageId !== 'markdown') {
       vscode.window.showErrorMessage('Active file is not a Markdown document!');
@@ -58,6 +58,14 @@ async function activate(context) {
   });
 
   context.subscriptions.push(disposable);
+
+  // 重置（清除）已保存的 API Key，方便用户更换密钥
+  const resetDisposable = vscode.commands.registerCommand('chat-in-markdown.resetApiKey', async () => {
+    await context.secrets.delete('chat-in-markdown.apiKey');
+    vscode.window.showInformationMessage('Chat in Markdown: API Key 已清除，下次发送聊天时会重新请求。');
+  });
+
+  context.subscriptions.push(resetDisposable);
 }
 
 async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {

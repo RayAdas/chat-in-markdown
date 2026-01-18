@@ -2,7 +2,7 @@
   "name": "chat-in-markdown",
   "displayName": "Chat in Markdown",
   "icon": "images/icon.png",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "keywords": [],
   "description": "",
   "publisher": "WindyAwaki",  
@@ -33,6 +33,10 @@
           "light": "./images/for-light.svg",
           "dark": "./images/for-dark.svg"
         }
+      },
+      {
+        "command": "chat-in-markdown.resetApiKey",
+        "title": "Chat in Markdown: Reset API Key"
       }
     ],
     "configuration": {
@@ -41,12 +45,12 @@
       "properties": {
         "chat-in-markdown.baseURL": {
           "type": "string",
-          "default": "https://ark.cn-beijing.volces.com/api/v3",
+          "default": "https://api.deepseek.com/v1",
           "description": "Base URL for OpenAI API"
         },
         "chat-in-markdown.model": {
           "type": "string",
-          "default": "ep-20250224162638-lk6m9",
+          "default": "deepseek-chat",
           "description": "Model for OpenAI API"
         }
       }
