@@ -6,19 +6,29 @@ function parseMarkdown(markdownText) {
     return tokens;
 }
 
-function getH1H2Headings(tokens) {
+function getHeadingsByLevels(tokens, levelSet) {
+    /*
+    根据 levelSet 中指定的标题级别（1-6）返回所有匹配的标题。
+    levelSet: 一个包含 1-6 的整数集合（如 new Set([1,2]) 或 [1,2,3]）。
+    */
+
+    const allowedLevels = levelSet instanceof Set ? levelSet : new Set(levelSet || []);
     const heads = [];
+
+    if (allowedLevels.size === 0) {
+        return heads;
+    }
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
 
         if (token.type === 'heading_open') {
             const level = Number(token.tag.slice(1)); // h1 -> 1
-            const inline = tokens[i + 1];
-            
-            if (level != 1 && level != 2) {
+            if (!allowedLevels.has(level)) {
                 continue;
             }
+
+            const inline = tokens[i + 1];
             heads.push({
                 level,
                 text: inline?.content ?? '',
@@ -98,7 +108,7 @@ function splitTextByLines(text_lines, line_nums) {
     */
     const result = [];
     for (let i = 0; i < line_nums.length - 1; i++) {
-        const start = line_nums[i];
+        const start = line_nums[i] + 1; // +1表示不包含标题行
         const end = line_nums[i + 1];
         const segment = text_lines.slice(start, end).join('\n');
         result.push(segment);
@@ -106,10 +116,37 @@ function splitTextByLines(text_lines, line_nums) {
     return result;
 }
 
+function shiftHeadingLevel(paragraph, shift) {
+    /*
+    将段落中的所有标题级别上移或下移shift级
+    shift: 正数表示下移，负数表示上移
+    如果新级别小于1或大于6，返回null
+    */
+   const tokens = md.parse(paragraph, {});
+   const paragraph_lines = paragraph.split('\n');
+   const headings = getHeadingsByLevels(tokens, new Set([1,2,3,4,5,6]));
+   for (const heading of headings) {
+        let newLevel = heading.level + shift;
+        if (newLevel < 1 || newLevel > 6) {
+            return null;
+        }
+        // 在paragraph的heading.line行修改标题
+        const lineIndex = heading.line;
+        const lineText = paragraph_lines[lineIndex];
+        const newLineText = lineText.replace(
+            new RegExp(`^#{1,6}(\\s+)`),
+            '#'.repeat(newLevel) + '$1'
+        );
+        paragraph_lines[lineIndex] = newLineText;
+   }
+    return paragraph_lines.join('\n');
+}
+
 module.exports = {
     parseMarkdown,
-    getH1H2Headings,
+    getHeadingsByLevels,
     getContextLineRange,
     getAllH2inRange,
     splitTextByLines,
+    shiftHeadingLevel,
 };

@@ -77,7 +77,7 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor, s
 
   // 解析 markdown，获取所有标题
   const tokens = sm.parseMarkdown(content);
-  const headings = sm.getH1H2Headings(tokens);
+  const headings = sm.getHeadingsByLevels(tokens, new Set([1, 2]));
   const content_lines = content.split('\n');
   
 
@@ -128,9 +128,11 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor, s
   const messages = [];
   for (let i = 0; i < roleHeadings.length; i++) {
     const head = roleHeadings[i].text;
-    const text = roleParagraphs[i];
+    const text = sm.shiftHeadingLevel(roleParagraphs[i], singleFileMode ? -1 : -2);
     messages.push({ "role": head, "content": text });
   }
+
+  // console.log('Messages to LLM:', messages);
 
   try {
     // Streaming:
@@ -158,9 +160,10 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor, s
       }
     }
 		
-    // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调两级
+    // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调一或二级
+    // WARRING: 可能会导致八级标题的出现
     const responseTokens = sm.parseMarkdown(fullResponse);
-    const responseHeadings = sm.getH1H2Headings(responseTokens);
+    const responseHeadings = sm.getHeadingsByLevels(responseTokens, new Set([1, 2, 3, 4, 5, 6]));
     for (const head of responseHeadings) {
       const headsPos = new vscode.Position(head.line + contextEndLine + 1, 0);
       insertPosition = await insertTextAndReturnNewPosition(prefix, headsPos, activeEditor);
