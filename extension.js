@@ -44,7 +44,6 @@ async function activate(context) {
 }
 
 async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
-  
   const openai = new OpenAI({
     apiKey: apiKey,
     baseURL: baseURL,
@@ -94,33 +93,42 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
     messages.push({ "role": head, "content": text });
   }
 
-  // Streaming:
-  const stream = await openai.chat.completions.create({
-    messages: messages,
-    model: model,
-    stream: true,
-  });
+  try {
+    // Streaming:
+    const stream = await openai.chat.completions.create({
+      messages: messages,
+      model: model,
+      stream: true,
+    });
 
-  let insertPosition = new vscode.Position(contextEndLine-1, activeEditor.document.lineAt(contextEndLine-1).text.length);
+    let insertPosition = new vscode.Position(
+      contextEndLine - 1,
+      activeEditor.document.lineAt(contextEndLine - 1).text.length
+    );
 
-  const aswTitle = '\n' + '## assistant' + '\n';
-  insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
+    const aswTitle = '\n' + '## assistant' + '\n';
+    insertPosition = await insertTextAndReturnNewPosition(aswTitle, insertPosition, activeEditor);
 
-  let fullResponse = ''; // 新建一个变量用于储存大模型流式输出
-  for await (const part of stream) {
-    const content = part.choices[0]?.delta?.content || '';
-    if (content) {
-    fullResponse += content; // 将内容追加到 fullResponse 变量中
-    insertPosition = await insertTextAndReturnNewPosition(content, insertPosition, activeEditor);
+    let fullResponse = ''; // 新建一个变量用于储存大模型流式输出
+    for await (const part of stream) {
+      const deltaContent = part.choices[0]?.delta?.content || '';
+      if (deltaContent) {
+        fullResponse += deltaContent; // 将内容追加到 fullResponse 变量中
+        insertPosition = await insertTextAndReturnNewPosition(deltaContent, insertPosition, activeEditor);
+      }
     }
-  }
-  
-  // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调两级
-  const responseTokens = sm.parseMarkdown(fullResponse);
-  const responseHeadings = sm.getH1H2Headings(responseTokens);
-  for (const head of responseHeadings) {
-    let headsPos = new vscode.Position(head.line + contextEndLine + 1, 0)
-    insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
+		
+    // 检查大模型的流式输出是否包含标题，若包含标题则将标题下调两级
+    const responseTokens = sm.parseMarkdown(fullResponse);
+    const responseHeadings = sm.getH1H2Headings(responseTokens);
+    for (const head of responseHeadings) {
+      const headsPos = new vscode.Position(head.line + contextEndLine + 1, 0);
+      insertPosition = await insertTextAndReturnNewPosition('##', headsPos, activeEditor);
+    }
+  } catch (error) {
+    console.error('Error during LLM streaming:', error);
+    const message = error && error.message ? error.message : String(error);
+    vscode.window.showErrorMessage(`LLM 流式响应出错: ${message}`);
   }
 }
 
