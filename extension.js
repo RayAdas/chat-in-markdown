@@ -1,6 +1,4 @@
 const vscode = require('vscode');
-const { exec } = require('child_process');
-const path = require('path');
 const sm = require('./scripts/split_markdown');
 const OpenAI = require('openai');
 
@@ -91,8 +89,8 @@ async function main(content, cursorLine, apiKey, baseURL, model, activeEditor) {
   // 拼接消息
   const messages = [];
   for (let i = 0; i < message_length; i++) {
-    head = h2s[i].text;
-    text = h2ps[i];
+    const head = h2s[i].text;
+    const text = h2ps[i];
     messages.push({ "role": head, "content": text });
   }
 

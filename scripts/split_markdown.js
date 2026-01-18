@@ -1,7 +1,7 @@
 const MarkdownIt = require('markdown-it');
+const md = new MarkdownIt();
 
 function parseMarkdown(markdownText) {
-    const md = new MarkdownIt();
     const tokens = md.parse(markdownText, {});
     return tokens;
 }
